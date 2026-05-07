@@ -16,9 +16,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { LockIcon, GlobeIcon, Trash2Icon, ArrowRightIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatDate } from "../utils";
 import type { ConnectedRepo } from "../types";
+import { formatDate } from "@/lib/utils";
 
 interface ConnectedRepoCardProps {
   repo: ConnectedRepo;
