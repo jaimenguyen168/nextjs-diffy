@@ -37,11 +37,23 @@ export function RepositoryDetailView({ id }: RepositoryDetailViewProps) {
     { enabled: !!id },
   );
 
+  const openPRs = trpc.pullRequest.list.useQuery(
+    { repositoryId: id, state: "open" },
+    { enabled: !!id },
+  );
+  const closedPRs = trpc.pullRequest.list.useQuery(
+    { repositoryId: id, state: "closed" },
+    { enabled: !!id },
+  );
+  const allPRs = trpc.pullRequest.list.useQuery(
+    { repositoryId: id, state: "all" },
+    { enabled: !!id },
+  );
+
   const prCounts = {
-    open: pullRequests.data?.filter((pr) => pr.state === "open").length ?? 0,
-    closed:
-      pullRequests.data?.filter((pr) => pr.state === "closed").length ?? 0,
-    all: pullRequests.data?.length ?? 0,
+    open: openPRs.data?.length ?? 0,
+    closed: closedPRs.data?.length ?? 0,
+    all: allPRs.data?.length ?? 0,
   };
 
   if (!repository.data) {
