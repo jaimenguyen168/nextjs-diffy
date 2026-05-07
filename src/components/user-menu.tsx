@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Settings, User, ChevronDown } from "lucide-react";
+import { LogOutIcon, SettingsIcon, UserIcon, ChevronDownIcon } from "lucide-react";
 
 interface UserProps {
   id: string;
@@ -47,7 +47,7 @@ export function UserMenu({ user }: { user: UserProps }) {
           <span className="hidden sm:inline-block text-sm font-medium max-w-25 truncate">
             {user.name ?? "User"}
           </span>
-          <ChevronDown className="size-3.5 text-muted-foreground" />
+          <ChevronDownIcon className="size-3.5 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
 
@@ -75,11 +75,11 @@ export function UserMenu({ user }: { user: UserProps }) {
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="gap-2 py-2 cursor-pointer" disabled>
-          <User className="size-4" />
+          <UserIcon className="size-4" />
           Profile
         </DropdownMenuItem>
         <DropdownMenuItem className="gap-2 py-2 cursor-pointer" disabled>
-          <Settings className="size-4" />
+          <SettingsIcon className="size-4" />
           Settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -88,7 +88,7 @@ export function UserMenu({ user }: { user: UserProps }) {
           disabled={loading}
           className="gap-2 py-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
         >
-          <LogOut className="size-4" />
+          <LogOutIcon className="size-4" />
           Log Out
         </DropdownMenuItem>
       </DropdownMenuContent>
