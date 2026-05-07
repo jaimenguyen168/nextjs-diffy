@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { FolderGit2, GitPullRequest } from "lucide-react";
+import { FolderGit2Icon, GitPullRequestIcon } from "lucide-react";
 import { UserMenu } from "@/components/user-menu";
 
 interface User {
@@ -21,12 +21,12 @@ const navItems = [
   {
     href: "/repos",
     label: "Repositories",
-    icon: FolderGit2,
+    icon: FolderGit2Icon,
   },
   {
     href: "/reviews",
     label: "Reviews",
-    icon: GitPullRequest,
+    icon: GitPullRequestIcon,
   },
 ];
 
