@@ -127,9 +127,19 @@ export async function fetchPullRequests(
 
   const pulls = (await response.json()) as GitHubPullRequest[];
 
-  return await Promise.all(
-    pulls.map((pr) => fetchPullRequest(accessToken, owner, repo, pr.number)),
-  );
+  // The list endpoint omits additions/deletions/changed_files — fetch each PR
+  // individually to get those fields. Capped at 10 concurrent requests to avoid
+  // burning through the GitHub rate limit (5000 req/hour).
+  const results: GitHubPullRequest[] = [];
+  const chunkSize = 10;
+  for (let i = 0; i < pulls.length; i += chunkSize) {
+    const chunk = pulls.slice(i, i + chunkSize);
+    const fetched = await Promise.all(
+      chunk.map((pr) => fetchPullRequest(accessToken, owner, repo, pr.number)),
+    );
+    results.push(...fetched);
+  }
+  return results;
 }
 
 export async function fetchPullRequest(
