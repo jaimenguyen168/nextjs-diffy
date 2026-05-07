@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { trpc } from "@/app/trpc";
+import { trpc } from "../trpc";
 
 export const HealthCheck = () => {
   const { data, isLoading, error } = trpc.health.useQuery();
