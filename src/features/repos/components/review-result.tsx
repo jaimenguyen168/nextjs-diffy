@@ -428,68 +428,66 @@ function CommentCard({
     <Card className={cn(selected && "ring-2 ring-primary/30 border-primary/30")}>
       <div className="p-4 flex items-start gap-3">
         {onToggle && (
-          <div className="mt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <Checkbox
-              checked={selected ?? false}
-              onCheckedChange={onToggle}
-            />
+          <div className="mt-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <Checkbox checked={selected ?? false} onCheckedChange={onToggle} />
           </div>
         )}
-      <button onClick={() => setExpanded(!expanded)} className="w-full text-left flex items-start gap-3">
-        <div className={cn("my-0.5 w-1 h-12 rounded-full shrink-0", severityConfig.bar)} />
-
-          <div className="flex-1 min-w-0 space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wider font-semibold", severityConfig.badge)}>
-                {comment.severity}
-              </Badge>
-
-              {comment.category && (
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  <CategoryIcon className="size-3" />
-                  {comment.category}
+        <div className="flex-1 min-w-0">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => setExpanded(!expanded)}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpanded(!expanded); }}
+            className="flex items-start gap-3 cursor-pointer w-full text-left"
+          >
+            <div className={cn("mt-0.5 w-1 h-12 rounded-full shrink-0", severityConfig.bar)} />
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wider font-semibold", severityConfig.badge)}>
+                  {comment.severity}
                 </Badge>
-              )}
-
-              {comment.isNitpick && (
-                <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                  nitpick
-                </Badge>
-              )}
-
-              <div className="flex-1" />
-
-              {expanded ? (
-                <ChevronDownIcon className="size-4 text-muted-foreground" />
-              ) : (
-                <ChevronRightIcon className="size-4 text-muted-foreground" />
-              )}
+                {comment.category && (
+                  <Badge variant="secondary" className="gap-1 text-xs">
+                    <CategoryIcon className="size-3" />
+                    {comment.category}
+                  </Badge>
+                )}
+                {comment.isNitpick && (
+                  <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                    nitpick
+                  </Badge>
+                )}
+                <div className="flex-1" />
+                {expanded ? (
+                  <ChevronDownIcon className="size-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRightIcon className="size-4 text-muted-foreground" />
+                )}
+              </div>
+              <p className={cn("text-sm leading-relaxed", !expanded && "line-clamp-2")}>
+                {comment.message}
+              </p>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); copyLocation(); }}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); copyLocation(); } }}
+                className="group/file inline-flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                <FileCode2Icon className="size-3.5" />
+                {directory && <span className="opacity-60">{directory}</span>}
+                <span className="font-medium text-foreground">{fileName}</span>
+                <span className="text-foreground">:</span>
+                <span className="text-primary font-medium">{comment.line}</span>
+                {copied ? (
+                  <CheckIcon className="size-3.5 text-emerald-500" />
+                ) : (
+                  <CopyIcon className="size-3.5 opacity-0 group-hover/file:opacity-100 transition-opacity" />
+                )}
+              </span>
             </div>
-
-            <p className={cn("text-sm leading-relaxed", !expanded && "line-clamp-2")}>
-              {comment.message}
-            </p>
-
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => { e.stopPropagation(); copyLocation(); }}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); copyLocation(); } }}
-              className="group/file inline-flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              <FileCode2Icon className="size-3.5" />
-              {directory && <span className="opacity-60">{directory}</span>}
-              <span className="font-medium text-foreground">{fileName}</span>
-              <span className="text-foreground">:</span>
-              <span className="text-primary font-medium">{comment.line}</span>
-              {copied ? (
-                <CheckIcon className="size-3.5 text-emerald-500" />
-              ) : (
-                <CopyIcon className="size-3.5 opacity-0 group-hover/file:opacity-100 transition-opacity" />
-              )}
-            </span>
           </div>
-        </button>
+        </div>
       </div>
 
       {expanded && comment.suggestion && (
