@@ -15,4 +15,5 @@ export interface ConnectedRepo {
   fullName: string;
   private: boolean;
   createdAt: Date;
+  openPRCount: number;
 }

@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { LockIcon, GlobeIcon, Trash2Icon, ArrowRightIcon } from "lucide-react";
+import { LockIcon, GlobeIcon, Trash2Icon, ArrowRightIcon, GitPullRequestIcon } from "lucide-react";
 import type { ConnectedRepo } from "../types";
 import { formatDate } from "@/lib/utils";
 
@@ -51,6 +51,12 @@ export function ConnectedRepoCard({
                   <Badge variant="outline" className="text-xs px-1.5 py-0 h-5">
                     {repo.private ? "Private" : "Public"}
                   </Badge>
+                  {repo.openPRCount > 0 && (
+                    <Badge className="gap-1 text-xs px-1.5 py-0 h-5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                      <GitPullRequestIcon className="size-3" />
+                      {repo.openPRCount} open
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
