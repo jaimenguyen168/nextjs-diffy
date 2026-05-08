@@ -1,5 +1,5 @@
 import { generateText, Output } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
 import { z } from "zod";
 
 export const ReviewCommentSchema = z.object({
@@ -9,15 +9,25 @@ export const ReviewCommentSchema = z.object({
   category: z.enum(["bug", "security", "performance", "style", "suggestion"]),
   message: z.string(),
   suggestion: z.string().nullable(),
+  isNitpick: z.boolean(),
+});
+
+export const FileSummarySchema = z.object({
+  filename: z.string(),
+  summary: z.string(),
+  changeType: z.enum(["feature", "fix", "refactor", "test", "config", "docs", "style"]),
 });
 
 export const ReviewResultSchema = z.object({
+  walkthrough: z.string(),
   summary: z.string(),
   riskScore: z.number().min(0).max(100),
+  fileSummaries: z.array(FileSummarySchema),
   comments: z.array(ReviewCommentSchema),
 });
 
 export type ReviewComment = z.infer<typeof ReviewCommentSchema>;
+export type FileSummary = z.infer<typeof FileSummarySchema>;
 export type ReviewResult = z.infer<typeof ReviewResultSchema>;
 
 interface FileChange {
@@ -28,19 +38,29 @@ interface FileChange {
   patch?: string;
 }
 
-const SYSTEM_PROMPT = `You are an expert code reviewer. Analyze the provided pull request diff and provide a structured review.
+const SYSTEM_PROMPT = `You are an expert code reviewer in the style of CodeRabbit. Analyze the provided pull request diff and produce a thorough, structured review.
 
-Your review should:
-1. Identify bugs, security issues, performance problems, and code style issues
-2. Provide a brief summary of the changes
-3. Assign a risk score (0-100) based on the complexity and potential issues
-4. Give specific, actionable feedback with line numbers
+Your review must include:
+
+1. **Walkthrough** — A concise narrative (2-4 sentences) explaining what this PR does at a high level, why the changes were made, and what areas of the codebase are affected. Write it as if explaining to a teammate doing a quick scan.
+
+2. **Summary** — A single sentence capturing the essence of the PR.
+
+3. **File summaries** — For each changed file, one clear sentence describing what changed in that file and why. Include a changeType classification.
+
+4. **Risk score** — 0-100 based on complexity, blast radius, and potential for bugs.
+
+5. **Review comments** — Specific, actionable inline comments with exact line numbers. Each comment must have:
+   - The exact file and line number from the diff
+   - A clear explanation of the issue
+   - A concrete suggestion for how to fix it
+   - Whether it is a nitpick (isNitpick: true for style/minor preference issues, false for real bugs or risks)
 
 Severity guide:
-- critical: Security vulnerabilities, data loss, crashes
-- high: Bugs that will cause issues in production
-- medium: Should be fixed but won't break things
-- low: Style issues, minor improvements
+- critical: Security vulnerabilities, data loss, crashes, auth bypasses
+- high: Bugs that will cause issues in production, data integrity problems
+- medium: Issues that should be fixed but won't immediately break things
+- low: Style issues, minor improvements, nitpicks
 
 Rules to avoid false positives:
 - Only flag an issue if you are highly confident it is a real problem visible in the diff
@@ -49,8 +69,9 @@ Rules to avoid false positives:
 - Do not flag unused imports or style issues unless they are clearly present in the diff
 - Do not speculate about runtime behavior you cannot confirm from the code shown
 - Prefer fewer, high-confidence comments over many speculative ones
+- Mark style preferences and minor nits as isNitpick: true so the developer can filter them
 
-Be concise but specific. Reference exact line numbers from the diff.`;
+Be precise. Reference exact line numbers from the diff.`;
 
 export async function reviewCode(
   prTitle: string,
@@ -59,25 +80,29 @@ export async function reviewCode(
   const diffContent = files
     .filter((f) => f.patch)
     .map(
-      (f) => `### ${f.filename} (${f.status})\n\`\`\`diff\n${f.patch}\n\`\`\``,
+      (f) => `### ${f.filename} (${f.status}, +${f.additions}/-${f.deletions})\n\`\`\`diff\n${f.patch}\n\`\`\``,
     )
     .join("\n\n");
 
   if (!diffContent.trim()) {
     return {
-      summary: "No code changes to review (binary files or empty diff).",
+      walkthrough: "This PR contains no code changes (binary files or empty diff).",
+      summary: "No code changes to review.",
       riskScore: 0,
+      fileSummaries: [],
       comments: [],
     };
   }
 
+  const fileList = files.map((f) => `- ${f.filename} (${f.status})`).join("\n");
+
   const { output } = await generateText({
-    model: openai("gpt-4o"),
+    model: google("gemini-2.5-pro-preview-05-06"),
     experimental_output: Output.object({ schema: ReviewResultSchema }),
     system: SYSTEM_PROMPT,
-    prompt: `Review this pull request:\n\n**Title:** ${prTitle}\n\n**Changes:**\n${diffContent}`,
-    temperature: 0.3,
-    maxOutputTokens: 2000,
+    prompt: `Review this pull request:\n\n**Title:** ${prTitle}\n\n**Files changed:**\n${fileList}\n\n**Diffs:**\n${diffContent}`,
+    temperature: 0.2,
+    maxOutputTokens: 8000,
   });
 
   return output;
