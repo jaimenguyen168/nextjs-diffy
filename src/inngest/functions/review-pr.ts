@@ -112,8 +112,10 @@ export const reviewPR = inngest.createFunction(
           where: { id: reviewId },
           data: {
             status: "COMPLETED",
+            walkthrough: reviewResult.walkthrough,
             summary: reviewResult.summary,
             riskScore: reviewResult.riskScore,
+            fileSummaries: reviewResult.fileSummaries,
             comments: reviewResult.comments,
           },
         });

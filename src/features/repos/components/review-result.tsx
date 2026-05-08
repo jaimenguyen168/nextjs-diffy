@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   FileCode2Icon,
   CheckCircle2Icon,
@@ -14,9 +15,14 @@ import {
   CopyIcon,
   CheckIcon,
   LightbulbIcon,
+  FileTextIcon,
+  WrapTextIcon,
+  GitPullRequestIcon,
+  SendIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getRiskConfig, getSeverityStyles, getCategoryIcon } from "@/features/repos/utils";
+import { usePostToGitHub } from "@/trpc/hooks/use-reviews";
 
 interface ReviewComment {
   file: string;
@@ -25,14 +31,23 @@ interface ReviewComment {
   category?: string;
   message: string;
   suggestion?: string | null;
+  isNitpick?: boolean;
+}
+
+interface FileSummary {
+  filename: string;
+  summary: string;
+  changeType: string;
 }
 
 interface ReviewResultProps {
   review: {
     id: string;
     status: string;
+    walkthrough?: string | null;
     summary: string | null;
     riskScore: number | null;
+    fileSummaries?: FileSummary[] | unknown;
     comments: ReviewComment[] | unknown;
     error: string | null;
     createdAt: Date;
@@ -98,7 +113,7 @@ export function ReviewResult({ review }: ReviewResultProps) {
                 Scanning for bugs, security issues, and improvements
               </p>
             </div>
-            <span className="text-xs text-muted-foreground tabular-nums">~20s</span>
+            <span className="text-xs text-muted-foreground tabular-nums">~30s</span>
           </div>
         </CardContent>
       </Card>
@@ -127,19 +142,67 @@ export function ReviewResult({ review }: ReviewResultProps) {
     );
   }
 
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [posted, setPosted] = useState(false);
+  const postToGitHub = usePostToGitHub();
+
   const comments = Array.isArray(review.comments) ? (review.comments as ReviewComment[]) : [];
+  const fileSummaries = Array.isArray(review.fileSummaries) ? (review.fileSummaries as FileSummary[]) : [];
+
+  const actionableComments = comments.filter((c) => !c.isNitpick);
+  const nitpicks = comments.filter((c) => c.isNitpick);
+
+  // Map actionable comment index back to original comments array index
+  const actionableWithIndex = actionableComments.map((c) => ({
+    comment: c,
+    originalIndex: comments.indexOf(c),
+  }));
 
   const severityCounts = {
-    critical: comments.filter((c) => c.severity === "critical").length,
-    high: comments.filter((c) => c.severity === "high").length,
-    medium: comments.filter((c) => c.severity === "medium").length,
-    low: comments.filter((c) => c.severity === "low").length,
+    critical: actionableComments.filter((c) => c.severity === "critical").length,
+    high: actionableComments.filter((c) => c.severity === "high").length,
+    medium: actionableComments.filter((c) => c.severity === "medium").length,
+    low: actionableComments.filter((c) => c.severity === "low").length,
   };
 
-  const totalIssues = comments.length;
+  const totalIssues = actionableComments.length;
+
+  const toggleComment = (originalIndex: number) => {
+    setSelectedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(originalIndex)) next.delete(originalIndex);
+      else next.add(originalIndex);
+      return next;
+    });
+  };
+
+  const handlePostToGitHub = async () => {
+    await postToGitHub.mutateAsync({
+      reviewId: review.id,
+      selectedCommentIndices: Array.from(selectedIndices),
+    });
+    setPosted(true);
+    setSelectedIndices(new Set());
+  };
 
   return (
     <div className="space-y-6">
+      {/* Walkthrough */}
+      {review.walkthrough && (
+        <Card className="overflow-hidden border-primary/10">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 rounded-md bg-primary/10">
+                <WrapTextIcon className="size-4 text-primary" />
+              </div>
+              <h3 className="text-sm font-semibold">Walkthrough</h3>
+            </div>
+            <p className="text-sm leading-relaxed text-foreground/90">{review.walkthrough}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Score + Severity */}
       <Card className="overflow-hidden">
         <CardContent className="p-6 space-y-6">
           <RiskScoreSection score={review.riskScore ?? 0} />
@@ -163,6 +226,11 @@ export function ReviewResult({ review }: ReviewResultProps) {
               <SeverityLegendItem label="High" count={severityCounts.high} color="bg-orange-500" />
               <SeverityLegendItem label="Medium" count={severityCounts.medium} color="bg-amber-500" />
               <SeverityLegendItem label="Low" count={severityCounts.low} color="bg-slate-400 dark:bg-slate-500" />
+              {nitpicks.length > 0 && (
+                <span className="text-xs text-muted-foreground ml-auto">
+                  + {nitpicks.length} nitpick{nitpicks.length > 1 ? "s" : ""}
+                </span>
+              )}
             </div>
           </div>
 
@@ -178,22 +246,132 @@ export function ReviewResult({ review }: ReviewResultProps) {
         </CardContent>
       </Card>
 
-      {comments.length > 0 ? (
+      {/* File Summaries */}
+      {fileSummaries.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-medium text-muted-foreground px-1">Changed Files</h2>
+          <Card>
+            <CardContent className="p-0 divide-y divide-border/60">
+              {fileSummaries.map((file, index) => (
+                <FileSummaryRow key={index} file={file} />
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Actionable Comments */}
+      {actionableComments.length > 0 ? (
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-sm font-medium text-muted-foreground">Review Comments</h2>
             <span className="text-xs text-muted-foreground tabular-nums">
-              {comments.length} {comments.length === 1 ? "issue" : "issues"}
+              {actionableComments.length} {actionableComments.length === 1 ? "issue" : "issues"}
             </span>
           </div>
           <div className="space-y-2">
-            {comments.map((comment, index) => (
-              <CommentCard key={index} comment={comment} index={index} />
+            {actionableWithIndex.map(({ comment, originalIndex }) => (
+              <CommentCard
+                key={originalIndex}
+                comment={comment}
+                index={originalIndex}
+                selected={selectedIndices.has(originalIndex)}
+                onToggle={() => toggleComment(originalIndex)}
+              />
             ))}
+          </div>
+
+          {/* Post to GitHub bar */}
+          <div className={cn(
+            "sticky bottom-4 rounded-xl border bg-background/95 backdrop-blur-sm shadow-lg px-4 py-3 flex items-center gap-3 transition-all",
+            selectedIndices.size === 0 && "opacity-50 pointer-events-none",
+          )}>
+            <GitPullRequestIcon className="size-4 text-muted-foreground shrink-0" />
+            <span className="text-sm flex-1">
+              {selectedIndices.size === 0
+                ? "Select comments to post to GitHub"
+                : `${selectedIndices.size} comment${selectedIndices.size > 1 ? "s" : ""} selected`}
+            </span>
+            {posted && !postToGitHub.isPending && (
+              <span className="text-xs text-emerald-500 flex items-center gap-1">
+                <CheckIcon className="size-3" /> Posted
+              </span>
+            )}
+            <Button
+              size="sm"
+              onClick={handlePostToGitHub}
+              disabled={selectedIndices.size === 0 || postToGitHub.isPending}
+            >
+              <SendIcon className="size-3.5" />
+              {postToGitHub.isPending ? "Posting..." : "Post to GitHub"}
+            </Button>
           </div>
         </div>
       ) : (
         review.status === "COMPLETED" && <NoIssuesCard />
+      )}
+
+      {/* Nitpicks (collapsed by default) */}
+      {nitpicks.length > 0 && (
+        <NitpicksSection nitpicks={nitpicks} />
+      )}
+    </div>
+  );
+}
+
+function FileSummaryRow({ file }: { file: FileSummary }) {
+  const changeTypeColors: Record<string, string> = {
+    feature: "text-emerald-500",
+    fix: "text-orange-500",
+    refactor: "text-blue-500",
+    test: "text-purple-500",
+    config: "text-slate-500",
+    docs: "text-amber-500",
+    style: "text-pink-500",
+  };
+
+  const pathParts = file.filename.split("/");
+  const fileName = pathParts.pop();
+  const directory = pathParts.join("/");
+
+  return (
+    <div className="flex items-start gap-3 px-4 py-3">
+      <FileTextIcon className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-mono">
+            {directory && <span className="text-muted-foreground">{directory}/</span>}
+            <span className="font-medium text-foreground">{fileName}</span>
+          </span>
+          <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wider", changeTypeColors[file.changeType] ?? "text-muted-foreground")}>
+            {file.changeType}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{file.summary}</p>
+      </div>
+    </div>
+  );
+}
+
+function NitpicksSection({ nitpicks }: { nitpicks: ReviewComment[] }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="space-y-2">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 px-1 text-sm text-muted-foreground hover:text-foreground transition-colors w-full"
+      >
+        {open ? <ChevronDownIcon className="size-4" /> : <ChevronRightIcon className="size-4" />}
+        <span>{nitpicks.length} nitpick{nitpicks.length > 1 ? "s" : ""}</span>
+        <span className="text-xs">(minor style / preference issues)</span>
+      </button>
+      {open && (
+        <div className="space-y-2">
+          {nitpicks.map((comment, index) => (
+            <CommentCard key={index} comment={comment} index={index} />
+          ))}
+        </div>
       )}
     </div>
   );
@@ -220,7 +398,17 @@ function NoIssuesCard() {
   );
 }
 
-function CommentCard({ comment, index }: { comment: ReviewComment; index: number }) {
+function CommentCard({
+  comment,
+  index,
+  selected,
+  onToggle,
+}: {
+  comment: ReviewComment;
+  index: number;
+  selected?: boolean;
+  onToggle?: () => void;
+}) {
   const [expanded, setExpanded] = useState(index < 3);
   const [copied, setCopied] = useState(false);
   const CategoryIcon = getCategoryIcon(comment.category);
@@ -237,10 +425,18 @@ function CommentCard({ comment, index }: { comment: ReviewComment; index: number
   const directory = pathParts.join("/");
 
   return (
-    <Card>
-      <button onClick={() => setExpanded(!expanded)} className="w-full text-left">
-        <div className="p-4 flex items-start gap-3">
-          <div className={cn("my-0.5 w-1 h-12 rounded-full shrink-0", severityConfig.bar)} />
+    <Card className={cn(selected && "ring-2 ring-primary/30 border-primary/30")}>
+      <div className="p-4 flex items-start gap-3">
+        {onToggle && (
+          <div className="mt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <Checkbox
+              checked={selected ?? false}
+              onCheckedChange={onToggle}
+            />
+          </div>
+        )}
+      <button onClick={() => setExpanded(!expanded)} className="w-full text-left flex items-start gap-3">
+        <div className={cn("my-0.5 w-1 h-12 rounded-full shrink-0", severityConfig.bar)} />
 
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
@@ -252,6 +448,12 @@ function CommentCard({ comment, index }: { comment: ReviewComment; index: number
                 <Badge variant="secondary" className="gap-1 text-xs">
                   <CategoryIcon className="size-3" />
                   {comment.category}
+                </Badge>
+              )}
+
+              {comment.isNitpick && (
+                <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                  nitpick
                 </Badge>
               )}
 
@@ -287,8 +489,8 @@ function CommentCard({ comment, index }: { comment: ReviewComment; index: number
               )}
             </span>
           </div>
-        </div>
-      </button>
+        </button>
+      </div>
 
       {expanded && comment.suggestion && (
         <div className="px-4 pb-4">
