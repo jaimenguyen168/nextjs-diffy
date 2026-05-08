@@ -183,6 +183,7 @@ export const pullRequestRouter = createTRPCRouter({
       }
 
       const accessToken = await getGitHubAccessToken(ctx.user.id);
+
       if (!accessToken) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
@@ -191,6 +192,7 @@ export const pullRequestRouter = createTRPCRouter({
       }
 
       const [owner, repo] = repository.fullName.split("/");
+
       if (!owner || !repo) {
         throw new TRPCError({
           code: "BAD_REQUEST",
