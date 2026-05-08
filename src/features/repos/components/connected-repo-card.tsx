@@ -15,7 +15,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { LockIcon, GlobeIcon, Trash2Icon, ArrowRightIcon, GitPullRequestIcon } from "lucide-react";
+import {
+  LockIcon,
+  GlobeIcon,
+  Trash2Icon,
+  ArrowRightIcon,
+  GitPullRequestIcon,
+} from "lucide-react";
 import type { ConnectedRepo } from "../types";
 import { formatDate } from "@/lib/utils";
 
@@ -31,8 +37,8 @@ export function ConnectedRepoCard({
   isDisconnecting,
 }: ConnectedRepoCardProps) {
   return (
-    <Card className="group hover:border-primary/30 transition-all hover:shadow-sm">
-      <CardContent className="p-5">
+    <Card className="group hover:border-primary/30 transition-all hover:shadow-sm py-0">
+      <CardContent className="p-6">
         <div className="flex items-start justify-between gap-3">
           <Link href={`/repos/${repo.id}`} className="flex-1 min-w-0">
             <div className="flex items-start gap-3">
