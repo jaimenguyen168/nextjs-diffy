@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { FolderGit2Icon, GitPullRequestIcon } from "lucide-react";
 import { UserMenu } from "@/components/user-menu";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface User {
   id: string;
@@ -63,6 +64,7 @@ export function Header({ user }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <div className="h-5 w-px bg-border mx-1 hidden sm:block" />
           <UserMenu user={user} />
         </div>
