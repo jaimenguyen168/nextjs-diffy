@@ -97,7 +97,7 @@ export async function reviewCode(
   const fileList = files.map((f) => `- ${f.filename} (${f.status})`).join("\n");
 
   const { output } = await generateText({
-    model: google("gemini-2.5-pro-preview-05-06"),
+    model: google("gemini-2.5-pro"),
     experimental_output: Output.object({ schema: ReviewResultSchema }),
     system: SYSTEM_PROMPT,
     prompt: `Review this pull request:\n\n**Title:** ${prTitle}\n\n**Files changed:**\n${fileList}\n\n**Diffs:**\n${diffContent}`,

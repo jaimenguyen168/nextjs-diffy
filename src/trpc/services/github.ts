@@ -165,6 +165,69 @@ export async function fetchPullRequest(
   return (await response.json()) as GitHubPullRequest;
 }
 
+/**
+ * Parses a file's patch and builds a map of { actualLine -> diffPosition }
+ * so we can convert AI comment line numbers to GitHub diff positions.
+ */
+export function buildLineToPositionMap(patch: string): Map<number, number> {
+  const map = new Map<number, number>();
+  let position = 0;
+  let currentLine = 0;
+
+  for (const line of patch.split("\n")) {
+    if (line.startsWith("@@")) {
+      const match = line.match(/\+(\d+)/);
+      if (match) currentLine = parseInt(match[1], 10) - 1;
+      position++;
+    } else if (line.startsWith("+")) {
+      currentLine++;
+      position++;
+      map.set(currentLine, position);
+    } else if (line.startsWith("-")) {
+      position++;
+    } else {
+      currentLine++;
+      position++;
+      map.set(currentLine, position);
+    }
+  }
+
+  return map;
+}
+
+export async function postPullRequestReview(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+  headSha: string,
+  body: string,
+  comments: { path: string; position: number; body: string }[],
+): Promise<void> {
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        commit_id: headSha,
+        body,
+        event: "COMMENT",
+        comments,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to post GitHub review: ${response.status} ${error}`);
+  }
+}
+
 export async function fetchPullRequestFiles(
   accessToken: string,
   owner: string,

@@ -2,7 +2,13 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { resolveGitHubRepo } from "../utils";
-import { fetchPullRequest } from "@/trpc/services/github";
+import {
+  fetchPullRequest,
+  fetchPullRequestFiles,
+  postPullRequestReview,
+  buildLineToPositionMap,
+} from "@/trpc/services/github";
+import { ReviewCommentSchema } from "@/trpc/services/ai";
 import { inngest } from "@/inngest/client";
 
 export const reviewRouter = createTRPCRouter({
@@ -99,6 +105,82 @@ export const reviewRouter = createTRPCRouter({
         orderBy: { createdAt: "desc" },
         take: input.limit,
       });
+    }),
+
+  postToGitHub: protectedProcedure
+    .input(
+      z.object({
+        reviewId: z.string(),
+        selectedCommentIndices: z.array(z.number()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const review = await ctx.db.review.findUnique({
+        where: { id: input.reviewId, userId: ctx.user.id },
+        include: { repository: true },
+      });
+
+      if (!review) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Review not found" });
+      }
+
+      if (review.status !== "COMPLETED") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Review is not completed" });
+      }
+
+      const allComments = ReviewCommentSchema.array().parse(review.comments ?? []);
+      const selectedComments = input.selectedCommentIndices.map((i) => allComments[i]).filter(Boolean);
+
+      const { accessToken, owner, repo } = await resolveGitHubRepo(
+        review.repositoryId,
+        ctx.user.id,
+      );
+
+      const pr = await fetchPullRequest(accessToken, owner, repo, review.prNumber);
+      const files = await fetchPullRequestFiles(accessToken, owner, repo, review.prNumber);
+
+      // Build line -> diff position maps per file
+      const positionMaps = new Map<string, Map<number, number>>();
+      for (const file of files) {
+        if (file.patch) {
+          positionMaps.set(file.filename, buildLineToPositionMap(file.patch));
+        }
+      }
+
+      const githubComments = selectedComments.flatMap((c) => {
+        const posMap = positionMaps.get(c.file);
+        if (!posMap) return [];
+        const position = posMap.get(c.line);
+        if (!position) return [];
+        const body = [
+          `**[${c.severity.toUpperCase()}]** ${c.category ? `\`${c.category}\`` : ""}`,
+          "",
+          c.message,
+          ...(c.suggestion ? ["", "**Suggested fix:**", c.suggestion] : []),
+        ].join("\n");
+        return [{ path: c.file, position, body }];
+      });
+
+      const reviewBody = [
+        `## AI Code Review`,
+        "",
+        ...(review.walkthrough ? [`> ${review.walkthrough}`, ""] : []),
+        `**Risk Score:** ${review.riskScore}/100`,
+        "",
+        review.summary ?? "",
+      ].join("\n");
+
+      await postPullRequestReview(
+        accessToken,
+        owner,
+        repo,
+        review.prNumber,
+        pr.head.sha,
+        reviewBody,
+        githubComments,
+      );
+
+      return { posted: githubComments.length };
     }),
 
   getLatestForPR: protectedProcedure

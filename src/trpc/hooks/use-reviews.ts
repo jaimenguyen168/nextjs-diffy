@@ -16,6 +16,10 @@ export function useLatestReview(repositoryId: string, prNumber: number) {
   );
 }
 
+export function usePostToGitHub() {
+  return trpc.review.postToGitHub.useMutation();
+}
+
 export function useTriggerReview(
   repositoryId: string,
   prNumber: number,

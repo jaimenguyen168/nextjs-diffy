@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   FileCode2Icon,
   CheckCircle2Icon,
@@ -16,9 +17,12 @@ import {
   LightbulbIcon,
   FileTextIcon,
   WrapTextIcon,
+  GitPullRequestIcon,
+  SendIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getRiskConfig, getSeverityStyles, getCategoryIcon } from "@/features/repos/utils";
+import { usePostToGitHub } from "@/trpc/hooks/use-reviews";
 
 interface ReviewComment {
   file: string;
@@ -138,11 +142,21 @@ export function ReviewResult({ review }: ReviewResultProps) {
     );
   }
 
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [posted, setPosted] = useState(false);
+  const postToGitHub = usePostToGitHub();
+
   const comments = Array.isArray(review.comments) ? (review.comments as ReviewComment[]) : [];
   const fileSummaries = Array.isArray(review.fileSummaries) ? (review.fileSummaries as FileSummary[]) : [];
 
   const actionableComments = comments.filter((c) => !c.isNitpick);
   const nitpicks = comments.filter((c) => c.isNitpick);
+
+  // Map actionable comment index back to original comments array index
+  const actionableWithIndex = actionableComments.map((c) => ({
+    comment: c,
+    originalIndex: comments.indexOf(c),
+  }));
 
   const severityCounts = {
     critical: actionableComments.filter((c) => c.severity === "critical").length,
@@ -152,6 +166,24 @@ export function ReviewResult({ review }: ReviewResultProps) {
   };
 
   const totalIssues = actionableComments.length;
+
+  const toggleComment = (originalIndex: number) => {
+    setSelectedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(originalIndex)) next.delete(originalIndex);
+      else next.add(originalIndex);
+      return next;
+    });
+  };
+
+  const handlePostToGitHub = async () => {
+    await postToGitHub.mutateAsync({
+      reviewId: review.id,
+      selectedCommentIndices: Array.from(selectedIndices),
+    });
+    setPosted(true);
+    setSelectedIndices(new Set());
+  };
 
   return (
     <div className="space-y-6">
@@ -238,9 +270,41 @@ export function ReviewResult({ review }: ReviewResultProps) {
             </span>
           </div>
           <div className="space-y-2">
-            {actionableComments.map((comment, index) => (
-              <CommentCard key={index} comment={comment} index={index} />
+            {actionableWithIndex.map(({ comment, originalIndex }) => (
+              <CommentCard
+                key={originalIndex}
+                comment={comment}
+                index={originalIndex}
+                selected={selectedIndices.has(originalIndex)}
+                onToggle={() => toggleComment(originalIndex)}
+              />
             ))}
+          </div>
+
+          {/* Post to GitHub bar */}
+          <div className={cn(
+            "sticky bottom-4 rounded-xl border bg-background/95 backdrop-blur-sm shadow-lg px-4 py-3 flex items-center gap-3 transition-all",
+            selectedIndices.size === 0 && "opacity-50 pointer-events-none",
+          )}>
+            <GitPullRequestIcon className="size-4 text-muted-foreground shrink-0" />
+            <span className="text-sm flex-1">
+              {selectedIndices.size === 0
+                ? "Select comments to post to GitHub"
+                : `${selectedIndices.size} comment${selectedIndices.size > 1 ? "s" : ""} selected`}
+            </span>
+            {posted && !postToGitHub.isPending && (
+              <span className="text-xs text-emerald-500 flex items-center gap-1">
+                <CheckIcon className="size-3" /> Posted
+              </span>
+            )}
+            <Button
+              size="sm"
+              onClick={handlePostToGitHub}
+              disabled={selectedIndices.size === 0 || postToGitHub.isPending}
+            >
+              <SendIcon className="size-3.5" />
+              {postToGitHub.isPending ? "Posting..." : "Post to GitHub"}
+            </Button>
           </div>
         </div>
       ) : (
@@ -334,7 +398,17 @@ function NoIssuesCard() {
   );
 }
 
-function CommentCard({ comment, index }: { comment: ReviewComment; index: number }) {
+function CommentCard({
+  comment,
+  index,
+  selected,
+  onToggle,
+}: {
+  comment: ReviewComment;
+  index: number;
+  selected?: boolean;
+  onToggle?: () => void;
+}) {
   const [expanded, setExpanded] = useState(index < 3);
   const [copied, setCopied] = useState(false);
   const CategoryIcon = getCategoryIcon(comment.category);
@@ -351,10 +425,18 @@ function CommentCard({ comment, index }: { comment: ReviewComment; index: number
   const directory = pathParts.join("/");
 
   return (
-    <Card>
-      <button onClick={() => setExpanded(!expanded)} className="w-full text-left">
-        <div className="p-4 flex items-start gap-3">
-          <div className={cn("my-0.5 w-1 h-12 rounded-full shrink-0", severityConfig.bar)} />
+    <Card className={cn(selected && "ring-2 ring-primary/30 border-primary/30")}>
+      <div className="p-4 flex items-start gap-3">
+        {onToggle && (
+          <div className="mt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <Checkbox
+              checked={selected ?? false}
+              onCheckedChange={onToggle}
+            />
+          </div>
+        )}
+      <button onClick={() => setExpanded(!expanded)} className="w-full text-left flex items-start gap-3">
+        <div className={cn("my-0.5 w-1 h-12 rounded-full shrink-0", severityConfig.bar)} />
 
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
@@ -407,8 +489,8 @@ function CommentCard({ comment, index }: { comment: ReviewComment; index: number
               )}
             </span>
           </div>
-        </div>
-      </button>
+        </button>
+      </div>
 
       {expanded && comment.suggestion && (
         <div className="px-4 pb-4">
