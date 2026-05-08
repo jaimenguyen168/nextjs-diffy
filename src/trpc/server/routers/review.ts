@@ -37,15 +37,29 @@ export const reviewRouter = createTRPCRouter({
         },
       });
 
-      await inngest.send({
-        name: "review/pr.requested",
-        data: {
-          reviewId: review.id,
-          repositoryId: repository.id,
-          prNumber: pr.number,
-          userId: ctx.user.id,
-        },
-      });
+      try {
+        await inngest.send({
+          name: "review/pr.requested",
+          data: {
+            reviewId: review.id,
+            repositoryId: repository.id,
+            prNumber: pr.number,
+            userId: ctx.user.id,
+          },
+        });
+      } catch (err) {
+        await ctx.db.review.update({
+          where: { id: review.id },
+          data: {
+            status: "FAILED",
+            error: "Failed to queue review job. Please try again.",
+          },
+        });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to queue review job. Please try again.",
+        });
+      }
 
       return { reviewId: review.id };
     }),

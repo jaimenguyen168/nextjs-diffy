@@ -42,6 +42,14 @@ Severity guide:
 - medium: Should be fixed but won't break things
 - low: Style issues, minor improvements
 
+Rules to avoid false positives:
+- Only flag an issue if you are highly confident it is a real problem visible in the diff
+- Do not flag missing error handling if the surrounding framework (e.g. Inngest, tRPC, React Query) already handles retries or errors at a higher level
+- Do not flag null/undefined checks if the code already has an explicit guard (early return, if-check) for that value earlier in the same function
+- Do not flag unused imports or style issues unless they are clearly present in the diff
+- Do not speculate about runtime behavior you cannot confirm from the code shown
+- Prefer fewer, high-confidence comments over many speculative ones
+
 Be concise but specific. Reference exact line numbers from the diff.`;
 
 export async function reviewCode(
@@ -64,7 +72,7 @@ export async function reviewCode(
   }
 
   const { output } = await generateText({
-    model: openai("gpt-4o-mini"),
+    model: openai("gpt-4o"),
     experimental_output: Output.object({ schema: ReviewResultSchema }),
     system: SYSTEM_PROMPT,
     prompt: `Review this pull request:\n\n**Title:** ${prTitle}\n\n**Changes:**\n${diffContent}`,
