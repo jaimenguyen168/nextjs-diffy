@@ -24,7 +24,7 @@ interface ReviewComment {
   severity: string;
   category?: string;
   message: string;
-  suggestion?: string;
+  suggestion?: string | null;
 }
 
 interface ReviewResultProps {
@@ -268,9 +268,12 @@ function CommentCard({ comment, index }: { comment: ReviewComment; index: number
               {comment.message}
             </p>
 
-            <button
+            <span
+              role="button"
+              tabIndex={0}
               onClick={(e) => { e.stopPropagation(); copyLocation(); }}
-              className="group/file inline-flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); copyLocation(); } }}
+              className="group/file inline-flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
               <FileCode2Icon className="size-3.5" />
               {directory && <span className="opacity-60">{directory}</span>}
@@ -282,7 +285,7 @@ function CommentCard({ comment, index }: { comment: ReviewComment; index: number
               ) : (
                 <CopyIcon className="size-3.5 opacity-0 group-hover/file:opacity-100 transition-opacity" />
               )}
-            </button>
+            </span>
           </div>
         </div>
       </button>

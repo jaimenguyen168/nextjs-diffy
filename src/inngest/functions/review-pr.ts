@@ -80,38 +80,55 @@ export const reviewPR = inngest.createFunction(
       return { success: false, error: "Invalid repository name" };
     }
 
-    const files = await step.run("fetch-pr-files", async () => {
-      return fetchPullRequestFiles(accessToken, owner, repo, prNumber);
-    });
+    try {
+      const files = await step.run("fetch-pr-files", async () => {
+        return fetchPullRequestFiles(accessToken, owner, repo, prNumber);
+      });
 
-    const pr = await step.run("fetch-pr", async () => {
-      return fetchPullRequest(accessToken, owner, repo, prNumber);
-    });
+      const pr = await step.run("fetch-pr", async () => {
+        try {
+          return await fetchPullRequest(accessToken, owner, repo, prNumber);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          throw new Error(`Failed to fetch PR #${prNumber}: ${message}`);
+        }
+      });
 
-    const reviewResult = await step.run("generate-review", async () => {
-      return reviewCode(
-        pr.title,
-        files.map((f) => ({
-          filename: f.filename,
-          status: f.status,
-          additions: f.additions,
-          deletions: f.deletions,
-          patch: f.patch,
-        })),
-      );
-    });
+      const reviewResult = await step.run("generate-review", async () => {
+        return reviewCode(
+          pr.title,
+          files.map((f) => ({
+            filename: f.filename,
+            status: f.status,
+            additions: f.additions,
+            deletions: f.deletions,
+            patch: f.patch,
+          })),
+        );
+      });
 
-    await step.run("save-review-result", async () => {
+      await step.run("save-review-result", async () => {
+        await db.review.update({
+          where: { id: reviewId },
+          data: {
+            status: "COMPLETED",
+            summary: reviewResult.summary,
+            riskScore: reviewResult.riskScore,
+            comments: reviewResult.comments,
+          },
+        });
+      });
+    } catch (err) {
       await db.review.update({
         where: { id: reviewId },
         data: {
-          status: "COMPLETED",
-          summary: reviewResult.summary,
-          riskScore: reviewResult.riskScore,
-          comments: reviewResult.comments,
+          status: "FAILED",
+          error:
+            err instanceof Error ? err.message : "An unexpected error occurred",
         },
       });
-    });
+      return { success: false, error: String(err) };
+    }
 
     return { success: true, reviewId };
   },

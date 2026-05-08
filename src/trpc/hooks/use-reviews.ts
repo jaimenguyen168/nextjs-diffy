@@ -27,6 +27,7 @@ export function useTriggerReview(
     onSuccess: () => {
       utils.review.getLatestForPR.invalidate({ repositoryId, prNumber });
       utils.pullRequest.get.invalidate({ repositoryId, prNumber });
+      utils.pullRequest.list.invalidate({ repositoryId });
       onSuccess?.();
     },
   });

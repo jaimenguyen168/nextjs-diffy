@@ -8,7 +8,7 @@ export const ReviewCommentSchema = z.object({
   severity: z.enum(["critical", "high", "medium", "low"]),
   category: z.enum(["bug", "security", "performance", "style", "suggestion"]),
   message: z.string(),
-  suggestion: z.string().optional(),
+  suggestion: z.string().nullable(),
 });
 
 export const ReviewResultSchema = z.object({

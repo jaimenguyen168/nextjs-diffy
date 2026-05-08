@@ -33,9 +33,10 @@ export const pullRequestRouter = createTRPCRouter({
           status: true,
           createdAt: true,
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: "asc" },
       });
 
+      // Build map ascending so the last (most recent) entry wins per prNumber
       const reviewMap = new Map(existingReviews.map((r) => [r.prNumber, r]));
 
       return prs.map((pr) => ({
