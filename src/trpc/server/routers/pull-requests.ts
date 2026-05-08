@@ -1,10 +1,9 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { resolveGitHubRepo } from "../utils";
 import {
   fetchPullRequests,
   fetchPullRequest,
-  getGitHubAccessToken,
   fetchPullRequestFiles,
 } from "@/trpc/services/github";
 
@@ -17,39 +16,12 @@ export const pullRequestRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const repository = await ctx.db.repository.findUnique({
-        where: { id: input.repositoryId, userId: ctx.user.id },
-      });
-
-      if (!repository) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Repository not found",
-        });
-      }
-
-      const accessToken = await getGitHubAccessToken(ctx.user.id);
-      if (!accessToken) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Github account not connected",
-        });
-      }
-
-      const [owner, repo] = repository.fullName.split("/");
-      if (!owner || !repo) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Invalid repository name",
-        });
-      }
-
-      const prs = await fetchPullRequests(
-        accessToken,
-        owner,
-        repo,
-        input.state,
+      const { repository, accessToken, owner, repo } = await resolveGitHubRepo(
+        input.repositoryId,
+        ctx.user.id,
       );
+
+      const prs = await fetchPullRequests(accessToken, owner, repo, input.state);
 
       const existingReviews = await ctx.db.review.findMany({
         where: {
@@ -61,9 +33,10 @@ export const pullRequestRouter = createTRPCRouter({
           status: true,
           createdAt: true,
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: "asc" },
       });
 
+      // Build map ascending so the last (most recent) entry wins per prNumber
       const reviewMap = new Map(existingReviews.map((r) => [r.prNumber, r]));
 
       return prs.map((pr) => ({
@@ -97,39 +70,12 @@ export const pullRequestRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const repository = await ctx.db.repository.findUnique({
-        where: { id: input.repositoryId, userId: ctx.user.id },
-      });
-
-      if (!repository) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Repository not found",
-        });
-      }
-
-      const accessToken = await getGitHubAccessToken(ctx.user.id);
-      if (!accessToken) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "GitHub account not connected",
-        });
-      }
-
-      const [owner, repo] = repository.fullName.split("/");
-      if (!owner || !repo) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Invalid repository name",
-        });
-      }
-
-      const pr = await fetchPullRequest(
-        accessToken,
-        owner,
-        repo,
-        input.prNumber,
+      const { repository, accessToken, owner, repo } = await resolveGitHubRepo(
+        input.repositoryId,
+        ctx.user.id,
       );
+
+      const pr = await fetchPullRequest(accessToken, owner, repo, input.prNumber);
 
       const existingReview = await ctx.db.review.findFirst({
         where: {
@@ -171,34 +117,10 @@ export const pullRequestRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const repository = await ctx.db.repository.findUnique({
-        where: { id: input.repositoryId, userId: ctx.user.id },
-      });
-
-      if (!repository) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Repository not found",
-        });
-      }
-
-      const accessToken = await getGitHubAccessToken(ctx.user.id);
-
-      if (!accessToken) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "GitHub account not connected",
-        });
-      }
-
-      const [owner, repo] = repository.fullName.split("/");
-
-      if (!owner || !repo) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Invalid repository name",
-        });
-      }
+      const { accessToken, owner, repo } = await resolveGitHubRepo(
+        input.repositoryId,
+        ctx.user.id,
+      );
 
       const files = await fetchPullRequestFiles(
         accessToken,

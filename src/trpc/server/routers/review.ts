@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { fetchPullRequest, getGitHubAccessToken } from "@/trpc/services/github";
+import { resolveGitHubRepo } from "../utils";
+import { fetchPullRequest } from "@/trpc/services/github";
+import { inngest } from "@/inngest/client";
 
 export const reviewRouter = createTRPCRouter({
   trigger: protectedProcedure
@@ -12,32 +14,10 @@ export const reviewRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const repository = await ctx.db.repository.findUnique({
-        where: { id: input.repositoryId, userId: ctx.user.id },
-      });
-
-      if (!repository) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Repository not found",
-        });
-      }
-
-      const accessToken = await getGitHubAccessToken(ctx.user.id);
-      if (!accessToken) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "GitHub account not connected",
-        });
-      }
-
-      const [owner, repo] = repository.fullName.split("/");
-      if (!owner || !repo) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Invalid repository name",
-        });
-      }
+      const { repository, accessToken, owner, repo } = await resolveGitHubRepo(
+        input.repositoryId,
+        ctx.user.id,
+      );
 
       const pr = await fetchPullRequest(
         accessToken,
@@ -57,8 +37,33 @@ export const reviewRouter = createTRPCRouter({
         },
       });
 
+      try {
+        await inngest.send({
+          name: "review/pr.requested",
+          data: {
+            reviewId: review.id,
+            repositoryId: repository.id,
+            prNumber: pr.number,
+            userId: ctx.user.id,
+          },
+        });
+      } catch (err) {
+        await ctx.db.review.update({
+          where: { id: review.id },
+          data: {
+            status: "FAILED",
+            error: "Failed to queue review job. Please try again.",
+          },
+        });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to queue review job. Please try again.",
+        });
+      }
+
       return { reviewId: review.id };
     }),
+
   get: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -76,6 +81,7 @@ export const reviewRouter = createTRPCRouter({
 
       return review;
     }),
+
   list: protectedProcedure
     .input(
       z.object({
@@ -94,6 +100,7 @@ export const reviewRouter = createTRPCRouter({
         take: input.limit,
       });
     }),
+
   getLatestForPR: protectedProcedure
     .input(
       z.object({

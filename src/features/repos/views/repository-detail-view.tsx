@@ -34,7 +34,19 @@ export function RepositoryDetailView({ id }: RepositoryDetailViewProps) {
 
   const pullRequests = trpc.pullRequest.list.useQuery(
     { repositoryId: id, state: prState },
-    { enabled: !!id },
+    {
+      enabled: !!id,
+      refetchInterval: (query) => {
+        const data = query.state.data;
+        if (!data) return false;
+        const hasActiveReview = data.some(
+          (pr) =>
+            pr.review?.status === "PENDING" ||
+            pr.review?.status === "PROCESSING",
+        );
+        return hasActiveReview ? 2000 : false;
+      },
+    },
   );
 
   const openPRs = trpc.pullRequest.list.useQuery(
