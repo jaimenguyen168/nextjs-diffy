@@ -56,6 +56,10 @@ export function RepositoryDetailView({ id }: RepositoryDetailViewProps) {
     all: allPRs.data?.length ?? 0,
   };
 
+  if (!pullRequests.data) {
+    return <RepositoryDetailSkeleton />;
+  }
+
   if (!repository.data) {
     return (
       <Card>
