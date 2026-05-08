@@ -75,8 +75,7 @@ export const pullRequestRouter = createTRPCRouter({
         ctx.user.id,
       );
 
-      const prNumber = parseInt(String(input.prNumber), 8);
-      const pr = await fetchPullRequest(accessToken, owner, repo, prNumber);
+      const pr = await fetchPullRequest(accessToken, owner, repo, input.prNumber);
 
       const existingReview = await ctx.db.review.findFirst({
         where: {
