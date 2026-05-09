@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { FolderGit2Icon, GitPullRequestIcon } from "lucide-react";
 import { UserMenu } from "@/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Logo } from "@/components/logo";
 
 interface User {
   id: string;
@@ -31,13 +32,17 @@ const navItems = [
   },
 ];
 
-export function Header({ user }: HeaderProps) {
+export function ReposHeader({ user }: HeaderProps) {
   const pathname = usePathname();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
-      <div className="container mx-auto flex h-14 items-center justify-between px-4">
-        <div className="flex items-center gap-8">
+      <div className="flex h-14 items-center justify-between px-6">
+        <div className="flex items-center gap-4">
+          <Logo />
+
+          <div className="h-5 w-px bg-border mx-1 hidden sm:block" />
+
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => {
               const isActive =
@@ -63,7 +68,7 @@ export function Header({ user }: HeaderProps) {
           </nav>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <ThemeToggle />
           <div className="h-5 w-px bg-border mx-1 hidden sm:block" />
           <UserMenu user={user} />

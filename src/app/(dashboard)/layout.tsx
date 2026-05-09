@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { Header } from "@/components/header";
+import { ReposHeader } from "@/features/repos/components/repos-header";
 
 export default async function DashboardLayout({
   children,
@@ -14,7 +14,7 @@ export default async function DashboardLayout({
   }
   return (
     <div className="min-h-screen bg-background">
-      <Header user={session.user} />
+      <ReposHeader user={session.user} />
       <main className="container mx-auto px-4 py-8">{children}</main>
     </div>
   );

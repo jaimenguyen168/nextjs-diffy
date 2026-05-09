@@ -83,7 +83,7 @@ export function PullRequestDetailView({
 
   return (
     <div className="space-y-8">
-      {/* Header */}
+      {/* ReposHeader */}
       <div className="flex items-start gap-4">
         <Link href={`/repos/${id}`}>
           <Button variant="outline" size="icon" className="shrink-0 mt-1">
