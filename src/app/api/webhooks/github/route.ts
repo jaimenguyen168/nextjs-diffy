@@ -23,6 +23,9 @@ interface PullRequestPayload {
 function verifySignature(payload: string, signature: string | null): boolean {
   const secret = process.env.GITHUB_WEBHOOK_SECRET;
   if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("GITHUB_WEBHOOK_SECRET is not set");
+    }
     console.warn("GITHUB_WEBHOOK_SECRET not set, skipping verification");
     return true;
   }
@@ -43,8 +46,13 @@ export async function POST(request: NextRequest) {
   const event = request.headers.get("x-github-event");
 
   // Verify the webhook signature
-  if (!verifySignature(payload, signature)) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  try {
+    if (!verifySignature(payload, signature)) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Webhook misconfigured" }, { status: 500 });
   }
 
   // Only handle pull_request events

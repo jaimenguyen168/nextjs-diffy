@@ -55,6 +55,10 @@ interface ReviewResultProps {
 }
 
 export function ReviewResult({ review }: ReviewResultProps) {
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [posted, setPosted] = useState(false);
+  const postToGitHub = usePostToGitHub();
+
   if (review.status === "PENDING") {
     return (
       <Card>
@@ -141,10 +145,6 @@ export function ReviewResult({ review }: ReviewResultProps) {
       </Card>
     );
   }
-
-  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
-  const [posted, setPosted] = useState(false);
-  const postToGitHub = usePostToGitHub();
 
   const comments = Array.isArray(review.comments) ? (review.comments as ReviewComment[]) : [];
   const fileSummaries = Array.isArray(review.fileSummaries) ? (review.fileSummaries as FileSummary[]) : [];
