@@ -1,40 +1,40 @@
 import {
-  GitPullRequest,
-  MessageSquare,
-  ScanSearch,
-  Shield,
-  Wand2,
-  Zap,
+  GitPullRequestIcon,
+  MessageSquareIcon,
+  ScanSearchIcon,
+  ShieldIcon,
+  Wand2Icon,
+  ZapIcon,
 } from "lucide-react";
 
 const FEATURES = [
   {
-    icon: Zap,
+    icon: ZapIcon,
     title: "Instant feedback",
     description: "Get comprehensive reviews in seconds, not hours.",
   },
   {
-    icon: Shield,
+    icon: ShieldIcon,
     title: "Security scanning",
     description: "Detect vulnerabilities and secrets automatically.",
   },
   {
-    icon: MessageSquare,
+    icon: MessageSquareIcon,
     title: "Clear suggestions",
     description: "Actionable feedback you can apply immediately.",
   },
   {
-    icon: GitPullRequest,
+    icon: GitPullRequestIcon,
     title: "PR integration",
     description: "Reviews appear right in your pull requests.",
   },
   {
-    icon: ScanSearch,
+    icon: ScanSearchIcon,
     title: "Context aware",
     description: "Understands your codebase patterns and style.",
   },
   {
-    icon: Wand2,
+    icon: Wand2Icon,
     title: "Always improving",
     description: "Powered by the latest AI models.",
   },

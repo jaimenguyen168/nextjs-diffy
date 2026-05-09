@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CheckCircle } from "lucide-react";
+import { ArrowRightIcon, CheckCircleIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/lib/auth-client";
 
@@ -31,7 +31,7 @@ export function HeroSection() {
             <Button size="lg" asChild>
               <Link href="/repos">
                 Repositories
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRightIcon className="h-4 w-4" />
               </Link>
             </Button>
           ) : (
@@ -39,7 +39,7 @@ export function HeroSection() {
               <Button size="lg" asChild>
                 <Link href="/sign-up">
                   Start for free
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRightIcon className="h-4 w-4" />
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
@@ -51,15 +51,15 @@ export function HeroSection() {
 
         <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
           <span className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-emerald-500" />
+            <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
             No credit card required
           </span>
           <span className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-emerald-500" />
+            <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
             GitHub integration
           </span>
           <span className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-emerald-500" />
+            <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
             Private repos supported
           </span>
         </div>
