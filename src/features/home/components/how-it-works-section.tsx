@@ -1,21 +1,21 @@
-import { GitMerge, GitPullRequest, ScanSearch } from "lucide-react";
+import { GitMergeIcon, GitPullRequestIcon, ScanSearchIcon } from "lucide-react";
 
 const STEPS = [
   {
     step: "1",
-    icon: GitPullRequest,
+    icon: GitPullRequestIcon,
     title: "Connect GitHub",
     description: "Sign in and select repositories to enable.",
   },
   {
     step: "2",
-    icon: ScanSearch,
+    icon: ScanSearchIcon,
     title: "Open a PR",
     description: "Diffy triggers automatically on every pull request.",
   },
   {
     step: "3",
-    icon: GitMerge,
+    icon: GitMergeIcon,
     title: "Merge with confidence",
     description: "Address suggestions and ship faster.",
   },
