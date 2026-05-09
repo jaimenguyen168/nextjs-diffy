@@ -10,7 +10,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOutIcon, SettingsIcon, UserIcon, ChevronDownIcon } from "lucide-react";
+import {
+  LogOutIcon,
+  SettingsIcon,
+  UserIcon,
+  ChevronDownIcon,
+} from "lucide-react";
 
 interface UserProps {
   id: string;
@@ -34,7 +39,7 @@ export function UserMenu({ user }: { user: UserProps }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant={"ghost"} className="h-9 gap-2 px-2 hover:bg-muted/80">
+        <Button variant={"ghost"} className="h-9 gap-2 px-0 hover:bg-muted/80">
           <Avatar className="size-7 ring-1 ring-border">
             <AvatarImage
               src={user.image ?? undefined}
