@@ -1,4 +1,4 @@
-![next-diffy](https://img.shields.io/badge/next--diffy-AI%20Code%20Review-black?style=flat-square)
+<img width="1536" height="1024" alt="diffy" src="https://github.com/user-attachments/assets/abb914f9-e023-480d-8af4-770918520d3f" />
 
 <div align="center">
   <img src="https://img.shields.io/badge/-Next.js-black?style=for-the-badge&logoColor=white&logo=nextdotjs&color=000000" alt="Next.js" />
