@@ -271,7 +271,7 @@ export function ReposView() {
         ) : connectedRepos.data?.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center">
-              <div className="mx-auto h-14 rounded-full bg-muted flex items-center justify-center">
+              <div className="h-14 flex items-center justify-center">
                 <FolderGit2Icon className="size-7 text-muted-foreground" />
               </div>
               <p className="mt-4 font-medium">

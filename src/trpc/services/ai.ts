@@ -1,5 +1,5 @@
 import { generateText, Output } from "ai";
-import { google } from "@ai-sdk/google";
+import { openrouter } from "@/lib/openrouter";
 import { z } from "zod";
 
 export const ReviewCommentSchema = z.object({
@@ -97,7 +97,7 @@ export async function reviewCode(
   const fileList = files.map((f) => `- ${f.filename} (${f.status})`).join("\n");
 
   const { output } = await generateText({
-    model: google("gemini-2.5-pro"),
+    model: openrouter("anthropic/claude-haiku-4-5"),
     experimental_output: Output.object({ schema: ReviewResultSchema }),
     system: SYSTEM_PROMPT,
     prompt: `Review this pull request:\n\n**Title:** ${prTitle}\n\n**Files changed:**\n${fileList}\n\n**Diffs:**\n${diffContent}`,
