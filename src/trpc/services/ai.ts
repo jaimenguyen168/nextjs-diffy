@@ -21,7 +21,7 @@ export const FileSummarySchema = z.object({
 export const ReviewResultSchema = z.object({
   walkthrough: z.string(),
   summary: z.string(),
-  riskScore: z.number().min(0).max(100),
+  riskScore: z.number(),
   fileSummaries: z.array(FileSummarySchema),
   comments: z.array(ReviewCommentSchema),
 });

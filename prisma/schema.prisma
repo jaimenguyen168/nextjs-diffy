@@ -86,6 +86,7 @@ model Repository {
   fullName  String
   private   Boolean  @default(false)
   htmlUrl   String
+  webhookId Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
