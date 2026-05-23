@@ -228,6 +228,68 @@ export async function postPullRequestReview(
   }
 }
 
+export async function createRepoWebhook(
+  accessToken: string,
+  owner: string,
+  repo: string,
+): Promise<number> {
+  const appUrl = process.env.BETTER_AUTH_URL;
+  const secret = process.env.GITHUB_WEBHOOK_SECRET;
+
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/hooks`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "web",
+        active: true,
+        events: ["pull_request"],
+        config: {
+          url: `${appUrl}/api/webhooks/github`,
+          content_type: "json",
+          secret,
+          insecure_ssl: "0",
+        },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to create webhook: ${response.status} ${error}`);
+  }
+
+  const data = (await response.json()) as { id: number };
+  return data.id;
+}
+
+export async function deleteRepoWebhook(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  webhookId: number,
+): Promise<void> {
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/hooks/${webhookId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    },
+  );
+
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Failed to delete webhook: ${response.status}`);
+  }
+}
+
 export async function fetchPullRequestFiles(
   accessToken: string,
   owner: string,

@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { fetchGitHubRepos, getGitHubAccessToken } from "@/trpc/services/github";
+import {
+  fetchGitHubRepos,
+  getGitHubAccessToken,
+  createRepoWebhook,
+  deleteRepoWebhook,
+} from "@/trpc/services/github";
 
 async function fetchOpenPRCount(
   accessToken: string,
@@ -92,9 +97,29 @@ export const repositoryRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const accessToken = await getGitHubAccessToken(ctx.user.id);
+
       const result = await Promise.all(
-        input.repos.map((repo) =>
-          ctx.db.repository.upsert({
+        input.repos.map(async (repo) => {
+          const existing = await ctx.db.repository.findUnique({
+            where: { githubId: repo.githubId },
+            select: { webhookId: true },
+          });
+
+          let webhookId = existing?.webhookId ?? null;
+
+          if (!webhookId && accessToken) {
+            const [owner, name] = repo.fullName.split("/");
+            if (owner && name) {
+              try {
+                webhookId = await createRepoWebhook(accessToken, owner, name);
+              } catch (err) {
+                console.error(`Failed to create webhook for ${repo.fullName}:`, err);
+              }
+            }
+          }
+
+          return ctx.db.repository.upsert({
             where: { githubId: repo.githubId },
             create: {
               userId: ctx.user.id,
@@ -103,16 +128,18 @@ export const repositoryRouter = createTRPCRouter({
               fullName: repo.fullName,
               private: repo.private,
               htmlUrl: repo.htmlUrl,
+              webhookId,
             },
             update: {
               name: repo.name,
               fullName: repo.fullName,
               private: repo.private,
               htmlUrl: repo.htmlUrl,
+              webhookId: webhookId ?? undefined,
               updatedAt: new Date(),
             },
-          }),
-        ),
+          });
+        }),
       );
       return { connected: result.length };
     }),
@@ -120,6 +147,25 @@ export const repositoryRouter = createTRPCRouter({
   disconnect: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const repo = await ctx.db.repository.findUnique({
+        where: { id: input.id, userId: ctx.user.id },
+        select: { fullName: true, webhookId: true },
+      });
+
+      if (repo?.webhookId) {
+        const accessToken = await getGitHubAccessToken(ctx.user.id);
+        if (accessToken) {
+          const [owner, name] = repo.fullName.split("/");
+          if (owner && name) {
+            try {
+              await deleteRepoWebhook(accessToken, owner, name, repo.webhookId);
+            } catch (err) {
+              console.error(`Failed to delete webhook for ${repo.fullName}:`, err);
+            }
+          }
+        }
+      }
+
       await ctx.db.repository.delete({
         where: { id: input.id, userId: ctx.user.id },
       });
